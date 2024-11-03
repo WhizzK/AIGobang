@@ -1,0 +1,10 @@
+QPushButton {
+    background-color: rgba(255, 255, 255, 255); /* 完全不透明的白色背景 */
+    color: black; /* 按钮文本颜色 */
+    border: 2px solid gray; /* 边框 */
+    border-radius: 5px; /* 圆角 */
+}
+
+QLabel {
+    background: transparent;  /* 确保QLabel的背景是透明的 */
+}

@@ -1,0 +1,11 @@
+<RCC>
+    <qresource prefix="/image">
+        <file>images/chessboard.png</file>
+        <file>images/icon.png</file>
+        <file>images/logo.png</file>
+        <file>images/background.jfif</file>
+    </qresource>
+    <qresource prefix="/qss">
+        <file>styles/main.qss</file>
+    </qresource>
+</RCC>
