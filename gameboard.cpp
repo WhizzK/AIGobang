@@ -1,27 +1,54 @@
 #include "gameboard.h"
 #include <QMessageBox>
 #include <csetjmp>
-
 #include "ui_gameboard.h"
 int GameBoard::CHESS_SIZE = 40;
-int GameBoard::BUTTON_WIDTH = 200;
 QPoint GameBoard::START_POS = QPoint(40,40);
-GameBoard::GameBoard(QWidget *parent,int gameMode) :
-    QWidget(parent),
-    ui(new Ui::GameBoard),
-    ai(new GobangAI)
+GameBoard::GameBoard(QMainWindow *parent,int gameMode) :
+    ui(new Ui::GameBoard)
 {
     ui->setupUi(this);
+    setWindowTitle("五子棋");
+    setWindowIcon(QIcon(":/image/images/icon.png"));
     setAttribute(Qt::WA_Hover); // 启用悬浮事件
     setMouseTracking(true);
     initGame(gameMode);
+    menu = parent;
+    //根据主界面的大小调整
+    this ->resize(menu->size());
+    ai = new GobangAI(this);
+    ai->setAttribute(Qt::WA_DeleteOnClose, false);
     connect(ui->restartButton, &QPushButton::clicked, this, &GameBoard::onRestartClicked);
     connect(ui->repentanceButton, &QPushButton::clicked,this,&GameBoard::onRepentanceClicked);
     connect(ui->giveUpButton, &QPushButton::clicked, this, &GameBoard::onGiveUpClicked);
     connect(ui->restartNewGameButton, &QPushButton::clicked, this, &GameBoard::onRestartNewGameClicked);
-
 }
+void GameBoard::setStackedWidget(QStackedWidget* stackedWidget) {
+    this->stackedWidget = stackedWidget;
+}
+void GameBoard::resizeEvent(QResizeEvent *event) {
+    QSize currentSize = event->size();
+    int currentWidth = currentSize.width();
+    int currentHeight = currentSize.height();
+    int minOne = (currentWidth >= currentHeight) ? currentHeight : currentWidth;
 
+    double halfblankPercentInHeight = 0.05;
+    START_POS = QPoint( halfblankPercentInHeight * currentWidth, halfblankPercentInHeight * currentHeight);
+    CHESS_SIZE = ((1 - halfblankPercentInHeight * 2) * minOne) / 14;
+    QWidget *layoutWidget = findChild<QWidget *>("layoutWidget");
+    if (layoutWidget) {
+        double halfblankPercentInButtonWidth = 0.05;
+        double halfblankPercentInButtonHeight = 0.2;
+        int chessBoardWidth = START_POS.x() * 2 + CHESS_SIZE * 14;
+        int buttonAreaWidth = currentWidth - chessBoardWidth;
+        int newX = chessBoardWidth + buttonAreaWidth * halfblankPercentInButtonWidth;
+        int newY = halfblankPercentInButtonHeight * currentHeight;
+        int newWidth = buttonAreaWidth * (1 - halfblankPercentInButtonWidth * 2);
+        int newHeight = currentHeight * (1 - halfblankPercentInButtonHeight * 2);
+        layoutWidget->setGeometry(newX, newY, newWidth, newHeight);
+        layoutWidget->setContentsMargins(0, 0, 0, 0);
+    }
+}
 GameBoard::~GameBoard()
 {
     delete ui;
@@ -36,10 +63,12 @@ void GameBoard::paintEvent(QPaintEvent *event)
     drawChessItem(painter);
     update();
 }
-
 void GameBoard::aiTerm(Board& board) {
     Point aistep = {0, 0, true, -INF};
     //IDA*（迭代加深）优化，从底层开始搜，如果有杀棋则提前返回
+    if (!ai->isVisible()) {
+        ai->show();
+    }
     for (int i = 2; i <= 2; i += 2) {
         repaint();
         auto tmpstep = ai->getStep(board, false, i);
@@ -54,20 +83,20 @@ void GameBoard::aiTerm(Board& board) {
     switch (board.checkGameOver(aistep.x,aistep.y, isBlackTerm)) {
         case BLACK_WIN: {
             board.clear();
-            QMessageBox::information(nullptr, "GAME OVER", "black win", QMessageBox::Yes);
-            emit backToMainMenu();
+            QMessageBox::information(this, "GAME OVER", "black win", QMessageBox::Yes);
+            backToMainMenu();
             return;
         }
         case WHITE_WIN: {
             board.clear();
-            QMessageBox::information(nullptr, "GAME OVER", "white win", QMessageBox::Yes);
-            emit backToMainMenu();
+            QMessageBox::information(this, "GAME OVER", "white win", QMessageBox::Yes);
+            backToMainMenu();
             return;
         }
         case DRAW: {
             board.clear();
-            QMessageBox::information(nullptr, "GAME OVER", "draw", QMessageBox::Yes);
-            emit backToMainMenu();
+            QMessageBox::information(this, "GAME OVER", "draw", QMessageBox::Yes);
+            backToMainMenu();
             return;
         }
         default: ;
@@ -112,18 +141,18 @@ void GameBoard::mousePressEvent(QMouseEvent *event)
     //统计四个点位是否连接
     switch (board.checkGameOver(y, x, isBlackTerm)) {
         case BLACK_WIN: {
-            QMessageBox::information(nullptr, "GAME OVER", "black win", QMessageBox::Yes);
-            emit backToMainMenu();
+            QMessageBox::information(this, "GAME OVER", "black win", QMessageBox::Yes);
+            backToMainMenu();
             return;
         }
         case WHITE_WIN: {
-            QMessageBox::information(nullptr, "GAME OVER", "white win", QMessageBox::Yes);
-            emit backToMainMenu();
+            QMessageBox::information(this, "GAME OVER", "white win", QMessageBox::Yes);
+            backToMainMenu();
             return;
         }
         case DRAW: {
-            QMessageBox::information(nullptr, "GAME OVER", "draw", QMessageBox::Yes);
-            emit backToMainMenu();
+            QMessageBox::information(this, "GAME OVER", "draw", QMessageBox::Yes);
+            backToMainMenu();
             return;
         }
         default: ;
@@ -193,11 +222,11 @@ void GameBoard::onGiveUpClicked() {
     if(reply == QMessageBox::Yes) {
         board.clear();
         if (isBlackTerm) {
-            QMessageBox::information(nullptr, "GAME OVER", "white win", QMessageBox::Yes);
+            QMessageBox::information(this, "GAME OVER", "white win", QMessageBox::Yes);
         } else {
-            QMessageBox::information(nullptr, "GAME OVER", "black win", QMessageBox::Yes);
+            QMessageBox::information(this, "GAME OVER", "black win", QMessageBox::Yes);
         }
-        emit backToMainMenu();
+        backToMainMenu();
     }
 }
 
@@ -209,7 +238,7 @@ void GameBoard::onRestartNewGameClicked() {
     QMessageBox::Yes | QMessageBox::No);
     if(reply == QMessageBox::Yes) {
         board.clear();
-        emit backToMainMenu();
+        backToMainMenu();
     }
 }
 
@@ -226,7 +255,7 @@ void GameBoard::drawChessBoard(QPainter& painter)
     // 棋盘格子
     for (int i = 0; i < 14; i++) {
         for (int j = 0; j < 14; j++) {
-            painter.drawRect(i * 40 + START_POS.x(), j * 40 + START_POS.y(), CHESS_SIZE, CHESS_SIZE);
+            painter.drawRect(i * CHESS_SIZE + START_POS.x(), j * CHESS_SIZE + START_POS.y(), CHESS_SIZE, CHESS_SIZE);
         }
     }
 }
@@ -283,3 +312,7 @@ void GameBoard::drawChessAtPoint(QPainter &painter, int x , int y)
     painter.drawEllipse(pt, CHESS_SIZE/4, CHESS_SIZE/4);
 }
 
+void GameBoard::backToMainMenu() {
+    this->close();
+    menu->show();
+}

@@ -2,8 +2,9 @@
 
 #include <algorithm>
 #include <cstring>
-#include <iostream>
-
+#include <QPainter>
+int GobangAI::CHESS_SIZE = 40;
+QPoint GobangAI::START_POS = QPoint(6, 6);
 std::vector<std::vector<int>> GobangAI::posValue = {
     {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
     {0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0},
@@ -63,17 +64,85 @@ std::vector<std::pair<int, int> > GobangAI::eightDirections = {
     {-1, 0}, {-1, 1}, {0, 1}, {1, 1},
     {1, 0}, {1, -1}, {0, -1}, {-1, -1}
 };
-GobangAI::GobangAI() {
+GobangAI::GobangAI(QWidget *parent) : QDialog(parent){
     acs = new AhoCorasick(patterns);
+    QSize size = parent->size();
+    int currentWidth = size.width() / 2;
+    int currentHeight = size.height() / 2;
+    this->setFixedSize(currentWidth * 0.8, currentHeight);
+    int minOne = (currentWidth >= currentHeight) ? currentHeight : currentWidth;
+    double halfblankPercentInHeight = 0.05;
+    START_POS = QPoint( halfblankPercentInHeight * currentWidth, halfblankPercentInHeight * currentHeight);
+    CHESS_SIZE = ((1 - halfblankPercentInHeight * 2) * minOne) / 14;
+    setWindowIcon(QIcon(":/image/images/icon.png"));
+    setWindowTitle("运行过程");
+}
+void GobangAI::drawChessBoard(QPainter& painter) {
+    painter.setPen(QPen(QColor(Qt::black), 2));
+    painter.setBrush(Qt::white);
+
+    for (int i = 0; i < 14; i++) {
+        for (int j = 0; j < 14; j++) {
+            painter.drawRect(i * CHESS_SIZE + START_POS.x(),
+                             j * CHESS_SIZE + START_POS.y(),
+                             CHESS_SIZE, CHESS_SIZE);
+        }
+    }
 }
 
+void GobangAI::drawChessItem(QPainter& painter) {
+    painter.setPen(QPen(QColor(Qt::black), 1));
+    for (int i = 0; i < GRID_NUM; ++i) {
+        for (int j = 0; j < GRID_NUM; ++j) {
+            switch (localBoard.get(i, j)) {
+            case BLACK: {
+                painter.setBrush(Qt::black);
+                drawChessAtPoint(painter, j, i);
+                break;
+            }
+            case WHITE: {
+                painter.setBrush(Qt::white);
+                drawChessAtPoint(painter, j, i);
+                break;
+            }
+            default: break;
+            }
+        }
+    }
+}
+
+void GobangAI::drawChessAtPoint(QPainter& painter, int x, int y) {
+    const QPoint pt(x * CHESS_SIZE + START_POS.x(),
+                    y * CHESS_SIZE + START_POS.y());
+    painter.drawEllipse(pt, CHESS_SIZE / 4, CHESS_SIZE / 4);
+}
+void GobangAI::paintEvent(QPaintEvent* event){
+    QPainter painter(this);
+    drawChessBoard(painter);
+    drawChessItem(painter);
+    drawScore(painter);
+}
+void GobangAI::drawScore(QPainter& painter){
+    // 设置绘图属性
+    painter.setPen(Qt::black);
+    painter.setFont(QFont("楷体", 10, QFont::Bold));
+    // 绘制指定区域的数字
+    int chessSize = START_POS.x() * 2 + CHESS_SIZE * 14;
+    int areaWidth = (this -> size().width() - chessSize);
+    int areaHeight = this -> size().height();
+    QRect targetArea(chessSize, areaHeight * 0.45 , areaWidth * 0.8, areaHeight * 0.1);
+    painter.drawText(targetArea, Qt::AlignCenter, QString::number(currentScore));
+}
 GobangAI::~GobangAI() {
     delete acs;
 }
 
 Point GobangAI::getStep(Board& state, bool isBlack, int depthmax) {
-    Board board = state;
-    Point p = alphaBetaPlay(board, isBlack, 0, -INF, INF, depthmax);
+    localBoard = state;
+    Point p = alphaBetaPlay(localBoard, isBlack, 0, -INF, INF, depthmax);
+    p.isBlack = aiIsBlack;
+    localBoard.push_back(p);
+    repaint();
     return p;
 }
 
@@ -86,14 +155,13 @@ int GobangAI::evluateState(Board& state) {
             pointWIT += getScore(state, point.x, point.y, false);
         }
     }
-    std::cout<<pointBLK<<" "<<pointWIT <<std::endl;
     return aiIsBlack ? pointBLK- pointWIT : pointWIT - pointBLK;
 }
 
 
 int GobangAI::getScoreInDir(Board& state, int x, int y, bool isBlack, const std::pair<int,int>& dir) {
     Chess color = isBlack ? BLACK : WHITE;
-    std::string s = state.getChessStringInDir(x,y,color,dir);
+    std::string s = std::move(state.getChessStringInDir(x,y,color,dir));
     std::vector<int> matches = acs->search(s);
     int score = 0;
     for (int i : matches) {
@@ -116,12 +184,15 @@ Point GobangAI::alphaBetaPlay(Board& state, bool isBlack, int depth, int alpha, 
     if (depth == maxdepth) {
         Point nextpt = state.steps.back();
         nextpt.score = evluateState(state);
+        currentScore = nextpt.score;
+        repaint();
         return nextpt;
     }
-    auto nextPossibleSteps = state.getNeighbours(isBlack);
+    auto nextPossibleSteps = std::move(state.getNeighbours(isBlack));
     Point maxV = {-1, -1, isBlack, -INF}, minV = {-1, -1, isBlack, INF};
     for (auto tpstep : nextPossibleSteps) {
         state.push_back(tpstep);
+        repaint();
         Point move = alphaBetaPlay(state, !isBlack, depth + 1, alpha, beta, maxdepth);
         if (depth % 2 == 0) {
             if (move.score >= maxV.score) {
@@ -139,6 +210,7 @@ Point GobangAI::alphaBetaPlay(Board& state, bool isBlack, int depth, int alpha, 
             beta = std::min(beta, minV.score);
         }
         state.pop_back();
+        repaint();
         if (alpha >= beta) break;
     }
     if(depth % 2 == 0)

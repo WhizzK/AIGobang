@@ -2,29 +2,21 @@
 #define GOBANGAI_H
 
 #include <vector>
-#include <stack>
-#include <random>
-#include <unordered_map>
+#include <QDialog>
 #include <queue>
 #include "point.h"
 #include "ahocorasick.h"
 #include "board.h"
-typedef long long ULL;
-typedef std::pair<int, int> PII;
 constexpr int INF = 0x3f3f3f3f;
-constexpr int N = 20;
-
-// 初始化Zobrist表
 
 
-class GobangAI {
+class GobangAI : public QDialog {
 public:
-    GobangAI();
+    GobangAI(QWidget *parent = nullptr);
     ~GobangAI();
 
     // 获取AI的走法
     Point getStep(Board& state, bool isBlack, int depthmax);
-
 private:
     // Alpha-Beta剪枝的Max-Min博弈树搜索
     Point alphaBetaPlay(Board& state, bool isBlack, int depth, int alpha, int beta, int maxdepth);
@@ -50,6 +42,18 @@ private:
     static std::vector<std::pair<int, int>> fourDirections;
     static std::vector<std::pair<int,int>> eightDirections;
     static std::vector<std::vector<int>> posValue;
+
+    //弹窗用于显示α-β计算过程
+    Board localBoard;
+    int currentScore = 0;
+    static int CHESS_SIZE;
+    static QPoint START_POS;
+    void drawChessBoard(QPainter& painter);
+    void drawChessItem(QPainter& painter);
+    void drawChessAtPoint(QPainter& painter, int x, int y);
+    void drawScore(QPainter& painter);
+protected:
+    void paintEvent(QPaintEvent* event) override ;
 };
 
 #endif // GOBANGAI_H

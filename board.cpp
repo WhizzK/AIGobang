@@ -6,7 +6,7 @@
 
 #include <iostream>
 
-Board::Board(): board(GRID_NUM), steps(0) {
+Board::Board(): steps(0), board(GRID_NUM){
     for (int i = 0; i < GRID_NUM; ++i) {
         board[i].resize(GRID_NUM);
         for (int j = 0; j < GRID_NUM; ++j) {
@@ -95,15 +95,14 @@ void Board::repentance() {
 Chess Board::get(int i, int j) const {
     return board[i][j];
 }
-
-Board Board::beforeBoard() {
-    Board temp;
-    temp.steps = steps;
-    temp.board = board;
-    temp.repentance();
-    return std::move(temp);
+Board& Board::operator=(const Board& other) {
+    if (this == &other) {
+        return *this; // 防止自我赋值
+    }
+    steps = other.steps;
+    board = other.board;
+    return *this;
 }
-
 std::string Board::getChessStringInDir(int x, int y, Chess color, const std::pair<int, int> &dir) {
     std::string s;
     for (int i = -4; i <= 4; i++) {
@@ -115,7 +114,7 @@ std::string Board::getChessStringInDir(int x, int y, Chess color, const std::pai
         } else
             s += "#";
     }
-    return std::move(s);
+    return s;
 }
 
 std::vector<Point> Board::getNeighbours(bool isBlack) {
@@ -138,7 +137,7 @@ std::vector<Point> Board::getNeighbours(bool isBlack) {
             }
         }
     }
-    return std::move(neighbours);
+    return neighbours;
 }
 
 void Board::push_back(const Point &point) {

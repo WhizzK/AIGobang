@@ -4,7 +4,6 @@
 #include <QMainWindow>
 
 #include "gameboard.h"
-#include <QStackedWidget>
 QT_BEGIN_NAMESPACE
 namespace Ui { class MainWindow; }
 QT_END_NAMESPACE
@@ -20,11 +19,11 @@ private slots:
     void onPlayerVsPlayerClicked();
     void onPlayerVsAIClicked();
     void onExitGameClicked();
-    void showMainMenu();
 private:
     Ui::MainWindow *ui;
     GameBoard *game;
-    QStackedWidget *stackedWidget;
+
+    QScreen *screen;
 };
 
 #endif // MAINWINDOW_H

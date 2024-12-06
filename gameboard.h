@@ -4,10 +4,10 @@
 #include <QWidget>
 #include <QPainter>
 #include <QMouseEvent>
-
+#include <QMainWindow>
 #include "gobangai.h"
 #include "board.h"
-
+#include <QStackedWidget>
 
 namespace Ui {
     class GameBoard;
@@ -17,20 +17,21 @@ class GameBoard : public QWidget
     Q_OBJECT
 
 public:
-    explicit GameBoard(QWidget *parent = nullptr,int gameMode = 0);
+    explicit GameBoard(QMainWindow *parent = nullptr,int gameMode = 0);
     void setGameMode(int gameMode);
+    void setStackedWidget(QStackedWidget* stackedWidget);
     ~GameBoard() override;
 protected:
     void paintEvent(QPaintEvent *event) override;
     void mousePressEvent(QMouseEvent *event) override;
     auto event(QEvent *event) -> bool override;
-signals:
-    void backToMainMenu();
+    void resizeEvent(QResizeEvent *event) override;
 private slots:
     void onRestartClicked();
     void onRepentanceClicked();
     void onGiveUpClicked();
     void onRestartNewGameClicked();
+    void backToMainMenu();
 private:
     void initGame(int gameMode);
 
@@ -42,10 +43,11 @@ private:
     std::pair<int,int> getIndex(const QPoint& point);
 private:
     static int CHESS_SIZE;
-    static int BUTTON_WIDTH;
     static QPoint START_POS;
 private:
     Ui::GameBoard *ui;
+    QMainWindow * menu;
+    QStackedWidget *stackedWidget;
     GobangAI *ai;
     Board board;
     int gameMode;
